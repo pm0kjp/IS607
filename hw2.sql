@@ -48,19 +48,19 @@ SELECT manufacturer, sum(distance) FROM flights INNER JOIN planes on
 flights.tailnum = planes.tailnum WHERE month=7 AND day=5 AND flights.year=2013 GROUP BY manufacturer;
 
 /* Question 3 results for INNER join:
-manufacturer					sum(distance)
-AIRBUS							195089
-AIRBUS INDUSTRIE				78786
-AMERICAN AIRCRAFT INC			2199
-BARKER JACK L					937
-BOEING							335028
-BOMBARDIER INC					31160
-CANADAIR						1142
-CESSNA							2898
-DOUGLAS							1089
-EMBRAER							77909
-GULFSTREAM AEROSPACE			1157
-MCDONNELL DOUGLAS				7486
+manufacturer				     	sum(distance)
+AIRBUS						   	195089
+AIRBUS INDUSTRIE			   	78786
+AMERICAN AIRCRAFT INC	   	2199
+BARKER JACK L				   	937
+BOEING						   	335028
+BOMBARDIER INC				   	31160
+CANADAIR						      1142
+CESSNA						   	2898
+DOUGLAS						   	1089
+EMBRAER						   	77909
+GULFSTREAM AEROSPACE		   	1157
+MCDONNELL DOUGLAS				   7486
 MCDONNELL DOUGLAS AIRCRAFT CO	15690
 MCDONNELL DOUGLAS CORPORATION	4767
 */
@@ -76,19 +76,19 @@ flights.tailnum = planes.tailnum WHERE month=7 AND day=5 AND flights.year=2013 G
 # The results from this query don't include nulls, because there are no null tail numbers in the planes table.
 
 /* Question 3 results for LEFT OUTER join where the planes table is on the left:
-manufacturer					sum(distance)
-AIRBUS							195089
-AIRBUS INDUSTRIE				78786
+manufacturer				     	sum(distance)
+AIRBUS						   	195089
+AIRBUS INDUSTRIE			   	78786
 AMERICAN AIRCRAFT INC			2199
-BARKER JACK L					937
-BOEING							335028
-BOMBARDIER INC					31160
-CANADAIR						1142
-CESSNA							2898
-DOUGLAS							1089
-EMBRAER							77909
-GULFSTREAM AEROSPACE			1157
-MCDONNELL DOUGLAS				7486
+BARKER JACK L				   	937
+BOEING						   	335028
+BOMBARDIER INC				   	31160
+CANADAIR						      1142
+CESSNA						   	2898
+DOUGLAS						   	1089
+EMBRAER						   	77909
+GULFSTREAM AEROSPACE		   	1157
+MCDONNELL DOUGLAS			   	7486
 MCDONNELL DOUGLAS AIRCRAFT CO	15690
 MCDONNELL DOUGLAS CORPORATION	4767
 /*
