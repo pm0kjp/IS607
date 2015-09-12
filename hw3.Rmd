@@ -1,0 +1,99 @@
+---
+title: "IS 607 Ch. 3 HW"
+author: "Joy Payton"
+date: "September 11, 2015"
+output: html_document
+---
+This assignment was done as partial completion of the IS 607 course for the Data Analytics 
+program at the City University of New York: http://sps.cuny.edu/programs/ms_dataanalytics 
+
+I've chosen the Online News Popularity Data Set found on the UCI Machine Learning Repository.
+The link for this dataset is https://archive.ics.uci.edu/ml/datasets/Online+News+Popularity
+
+With permission of the authors:
+
+K. Fernandes, P. Vinagre and P. Cortez. 
+A Proactive Intelligent Decision Support System for Predicting the Popularity of Online News. 
+Proceedings of the 17th EPIA 2015 - Portuguese Conference on Artificial Intelligence, 
+September, Coimbra, Portugal.
+
+```{r eval=TRUE}
+# I download the zip file, being sure to add method="curl" to account for Macs,
+# then unzip it in my working directory.
+library(utils)
+download.file("https://archive.ics.uci.edu/ml/machine-learning-databases/00332/OnlineNewsPopularity.zip?unz", "online_news_popularity.zip", method="curl")
+unzip("online_news_popularity.zip")
+# I read the file to create an R object:
+popularity<-read.csv("OnlineNewsPopularity/OnlineNewsPopularity.csv")
+```
+
+Reviewing the data dictionary (unzipped in the same directory) and examining the data frame, I
+see that there is no date field listed.  I can, however, extract the date from the URLs in the 
+first column.  I'll use regex  to extract the month, day, and year of publication from 
+the URL. In this way, it will be easy to discover trends related to holidays (do people do more
+media sharing when they have days off close to major federal holidays?). I've chosen to put the
+three date parts in separate columns in order to be able to track seasonal trends more easily,
+but I could also use str_match to extract the entire date string.
+
+``` {r eval=TRUE}
+library(stringr)
+date_pattern<-"(\\d+)/(\\d+)/(\\d+)"
+popularity<-cbind(popularity,date=str_match(popularity$url, date_pattern)[,2:4])
+```
+
+The popularity data has a few columns I'm going to condense.  For example, there are 
+seven columns corresponding to each day of the week, with a numerical variable indicating 
+whether the news piece was published on that day of the week (0=no, 1=yes).  
+I'd rather have a single column that states which day it was published on.
+
+``` {r eval=TRUE}
+popularity$day_of_week<-NA
+popularity$day_of_week[which(popularity$weekday_is_monday == 1)]<-"Monday"
+popularity$day_of_week[which(popularity$weekday_is_tuesday == 1)]<-"Tuesday"
+popularity$day_of_week[which(popularity$weekday_is_wednesday == 1)]<-"Wednesday"
+popularity$day_of_week[which(popularity$weekday_is_thursday == 1)]<-"Thursday"
+popularity$day_of_week[which(popularity$weekday_is_friday == 1)]<-"Friday"
+popularity$day_of_week[which(popularity$weekday_is_saturday == 1)]<-"Saturday"
+popularity$day_of_week[which(popularity$weekday_is_sunday == 1)]<-"Sunday"
+```
+
+I'll do something similar for the data channel columns.  First, I'll check to make sure the
+columns I'm condensing really are mutually exclusive.  I'll do this by simply adding together
+the numbers found in each column.  The sum should not be greater than 1, if they are mutually
+exclusive.
+
+``` {r eval=TRUE}
+library(dplyr)
+nrow(filter(popularity, data_channel_is_lifestyle+data_channel_is_entertainment+data_channel_is_bus+data_channel_is_socmed + data_channel_is_tech + data_channel_is_world >1))
+# Good news, no row has more than one category selected.
+popularity$news_category<-NA
+popularity$news_category[which(popularity$data_channel_is_lifestyle == 1)]<-"Lifestyle"
+popularity$news_category[which(popularity$data_channel_is_entertainment == 1)]<-"Entertainment"
+popularity$news_category[which(popularity$data_channel_is_bus == 1)]<-"Business"
+popularity$news_category[which(popularity$data_channel_is_socmed == 1)]<-"Social Media"
+popularity$news_category[which(popularity$data_channel_is_tech == 1)]<-"Tech"
+popularity$news_category[which(popularity$data_channel_is_world == 1)]<-"World"
+```
+
+
+The popularity data frame has many columns I'm not interested in.  I'm going to omit columns
+sourced from sentiment analysis and simply keep the simplest, most direct data about the 
+news items -- length, content inclusion (links, videos, images), content complexity (as 
+measured by word length), day-of-week data, the two columns I created from distilling
+other column sets, and the result we're interested in: number of shares.
+
+``` {r eval=TRUE}
+popularity<-select(popularity, url, year=date.1, month=date.2, day=date.3, day_of_week,
+                   news_category,
+                   num_words_title=n_tokens_title, num_words_content=n_tokens_content,
+                   avg_word_length=average_token_length, 
+                  num_links_all=num_hrefs, num_links_internal=num_self_hrefs, num_imgs, num_videos,
+                  shares)
+```
+
+Finally, I see that there are some uncategorized news articles, so I decide to eliminate
+data that are incomplete.
+
+``` {r eval=TRUE}
+popularity<-complete.cases(popularity)
+```
