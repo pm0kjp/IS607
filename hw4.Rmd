@@ -1,0 +1,270 @@
+---
+title: "Week 4 Homework, IS 607"
+author: "Joy Payton"
+date: "September 19, 2015"
+output: html_document
+---
+
+This file represents partial completion of the IS 607 course in the MS in Data Analytics
+Program at the City University of New York.  Note this R Markdown file includes characters
+that will be rendered properly only using UTF-8.  If given an encoding option, please
+use UTF-8.
+
+```{r, eval=TRUE}
+library(stringr)
+```
+
+```
+We are asked to 
+4. Describe the types of strings that conform to the following regular expressions and
+construct an example that is matched by the regular expression.
+(a) [0-9]+\\$
+(b) \\b[a-z]{1,4}\\b
+(c) .*?\\.txt$
+(d) \\d{2}/\\d{2}/\\d{4}
+(e) <(.+?)>.+?</\\1>
+```
+```
+(a) [0-9]+\\$
+```
+In (a), we see that the bracketed group contains all digits, and is quantified using the plus
+sign, so we know that a matching group will have one or more digits.  The double backslash that 
+follows indicates a literal single backslash in the pattern text, such that the R interpreter 
+will understand that the pattern desired is \\$, or a literal dollar sign. Note that this 
+explanation for the double backslash applies broadly in R and will not be revisited in this 
+assignment.
+**The regex pattern in (a) will match numerical digits (1 or more) followed by a dollar sign.**
+
+We test with a series of strings we believe *will* match the regex for (a).
+The first three we expect to match entirely, while the next three will have a matching 
+text within the string.
+
+```{r eval=TRUE}
+matches<-c("1127$",    # we believe will match entirely
+           "0$",       # we believe will match entirely
+           "9091118$", # we believe will match entirely
+           "price: 1234$ or equiv in Euros",   # we believe will match chunk of text
+           "19.176$",                          # we believe will match chunk of text
+           "00005$_1712$%")                    # we believe will match chunk of text
+str_extract(matches, "[0-9]+\\$")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("1127 $",    # we believe will not match (space)
+           "$125",          # we believe will not match (inversion of digits and $)
+           "9091118",       # we believe will not match (lack of $)
+           "1234 dollars",  # we believe will not match (lack of $)
+           "ten$",          # we believe will not match (lack of digits)
+           "1236\\$")       # we believe will not match: misunderstanding of  \\$
+str_extract(non_matches, "[0-9]+\\$")
+```
+
+```
+(b) \\b[a-z]{1,4}\\b
+```
+In (b) we begin with a word boundary followed by any 1, 2, 3, or 4 lowercase letter(s).  This 
+is followed by another word boundary.  Since we treat of alphabetic characters enclosed by 
+word boundaries, we could also describe this pattern as **a 1-4 character long "word" (whether
+lexical or not) composed only of lowercase alphabetic characters.** Accented characters would not 
+count.
+
+We test with a series of strings we believe *will* match the regex for (b).
+The first three we expect to match entirely, while the next three will have a matching 
+text within the string.
+
+```{r eval=TRUE}
+matches<-c("flop",    # we believe will match entirely
+           "zz",      # we believe will match entirely
+           "a",       # we believe will match entirely
+           "  able 1",   # we believe will match chunk of text
+           "wing, ",     # we believe will match chunk of text
+           "123: nope!")                    # we believe will match chunk of text
+str_extract(matches, "\\b[a-z]{1,4}\\b")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("Why?",      # we believe will not match (capital letter)
+           "há",            # we believe will not match (accented text)
+           "9091118",       # we believe will not match (no alphas)
+           "bananas?",      # we believe will not match (too long)
+           "fiver",         # we believe will not match (too long)
+           "fl1r")          # we believe will not match (digit in word)
+str_extract(non_matches, "\\b[a-z]{1,4}\\b")
+```
+
+```
+(c) .*?\\.txt$
+```
+In (c) we see **a non-greedy qualifier (?) appended to the "zero or more of any character" 
+regex and followed by a .txt and immediately afterwards by the end of the line.**  
+This means that R will select the minimum length of text that still matches for the first 
+part of the regex, rather important since .* can be greedy indeed and match text that 
+was intended to match other more specific regex later in the pattern.
+
+We test with a series of strings we believe *will* match the regex for (c).
+The first three we expect to match entirely, while the next three will have a matching 
+text within the string.
+
+```{r eval=TRUE}
+matches<-c("h12368_dzdjh.co.january.txt",    # we believe will match entirely
+           "n1 fakdl    12  .txt",           # we believe will match entirely
+           ".txt",                           # we believe will match entirely
+           "ring_of_\n  fire.txt",           # we believe will match chunk of text
+           "i.jpg don't.jpg  
+           know.txt",      # we believe will match chunk of text
+           "123: \nnope!.txt")               # we believe will match chunk of text
+str_extract(matches, ".*?\\.txt$")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("Why.txt ",      # we believe will not match (.txt followed by space)
+           "txt",               # we believe will not match (no "dot")
+           "9091118.
+           txt",                # we believe will not match 
+                                # (unmatching, unprintable character between . and text )
+           "text.txt1",         # we believe will not match (.txt followed by number, not EOL)
+           "five_txt",          # we believe will not match (underscore instead of dot)
+           "fl1r")              # we believe will not match (just no)
+str_extract(non_matches, ".*?\\.txt$")
+```
+
+```
+(d) \\d{2}/\\d{2}/\\d{4}
+```
+The regex for d is quite simple: **two digits followed by a forward slash, followed by an
+additional two digits and a slash, and finishing with four digits.**  This is a typical
+manner of displaying dates in many written languages.
+
+We test with a series of strings we believe *will* match the regex for (d).
+The first three we expect to match entirely, while the next three will have a matching 
+text within the string.
+
+```{r eval=TRUE}
+matches<-c("00/00/0000",    # we believe will match entirely
+           "99/23/1269",    # we believe will match entirely
+           "12/25/1977",    # we believe will match entirely
+           "dob: 07/01/1980",        # we believe will match chunk of text
+           "04/12/1900: never",      # we believe will match chunk of text
+           "12312/12/12579")         # we believe will match chunk of text
+str_extract(matches, "\\d{2}/\\d{2}/\\d{4}")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("00-00-0000",     # we believe will not match (dash instead of slash)
+           "3/15/2001",          # we believe will not match (short a digit)
+           "12980/1/01970",      # we believe will not match (short a digit)
+           "Jan/04/1616",        # we believe will not match (alpha instead of numbers)
+           "05 / 12 / 2000",     # we believe will not match (extra spaces)
+           "1995/04/12")         # we believe will not match (wrong number of numerals)
+str_extract(non_matches, "\\d{2}/\\d{2}/\\d{4}")
+```
+```
+(e) <(.+?)>.+?</\\1>
+```
+Section (e) features a pattern that will match **an open triangle bracket, some characters (at 
+least one), and a closing triangle bracket followed by at least one character and a similar 
+bracketed text which matches the first (\\1) with the exception of a leading forward slash.** This
+matches the markup of html and uses regex backreferencing.
+
+We test with a series of strings we believe *will* match the regex for (e).
+The first three we expect to match entirely, while the next three will have a matching 
+text within the string.
+
+```{r eval=TRUE}
+matches<-c("<title>Bob</title>",    # we believe will match entirely
+           "<img> </img>",          # we believe will match entirely
+           "<abc>abc</abc>",        # we believe will match entirely
+           "the end.<div> </div> ", # we believe will match chunk of text
+           "<a>.</a><b>123",        # we believe will match chunk of text
+           "not<b> certain</b>")        # we believe will match chunk of text
+str_extract(matches, "<(.+?)>.+?</\\1>")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("<abc>abc</ac>",      # we believe will not match (closing tag does not match)
+           "</br>",                  # we believe will not match (self closing tag with no opening tag)
+           "<div id='bob'> </div>",  # we believe will not match (closing tag doesn't match)
+           "> the end </img>",       # we believe will not match (broken opening tag)
+           "<p></p>",                # we believe will not match (no content between tags)
+           "<html>")                 # we believe will not match (only opening tag)
+str_extract(non_matches, "<(.+?)>.+?</\\1>")
+```
+```
+5.  Rewrite the expression [0-9]+\\$ in a way that all elements are altered but the
+expression performs the same task.
+```
+Original  |  Replacement
+--------- | -------------
+[0-9]     | [[:digit]]
++         | {1,}
+\\$       | \\x24
+[0-9]+\\$ | [[:digit:]]{1,}\\x24
+We can check this replacement table (the last replacement is a hex representation of the $ character)
+```{r eval=TRUE}
+matches<-c("1127$",    # we believe will match entirely
+           "0$",       # we believe will match entirely
+           "9091118$", # we believe will match entirely
+           "price: 1234$ or equiv in Euros",   # we believe will match chunk of text
+           "19.176$",                          # we believe will match chunk of text
+           "00005$_1712$%")                    # we believe will match chunk of text
+str_extract(matches, "[[:digit:]]{1,}\\x24")
+```
+
+We'll also check for things we expect to NOT match:
+```{r eval=TRUE}
+non_matches<-c("1127 $",    # we believe will not match (space)
+           "$125",          # we believe will not match (inversion of digits and $)
+           "9091118",       # we believe will not match (lack of $)
+           "1234 dollars",  # we believe will not match (lack of $)
+           "ten$",          # we believe will not match (lack of digits)
+           "1236\\$")       # we believe will not match: misunderstanding of  \\$
+str_extract(non_matches, "[[:digit:]]{1,}\\x24")
+```
+
+```
+6. Consider the mail address chunkylover53[at]aol[dot]com.
+(a) Transform the string to a standard mail format using regular expressions.
+(b) Imagine we are trying to extract the digits in the mail address.  To do so we write
+the expression [:digit:].  Explain why this fails and correct the expression.
+(c) Instead of using the predefined character classes, we would like to use the predefined
+symbols to extract the digits in the mail address.  To do so we write the expression
+\\D.  Explain why this fails and correct the expression.
+```
+In part (a) we want to change [at] to @ and [dot] to . .  We'll start with our replacement 
+patterns:
+```{r eval=TRUE}
+at_pattern<-"\\[at\\]"
+dot_pattern<-"\\[dot\\]"
+```
+
+Now we replace matching text with what's preferred:
+```{r eval=TRUE}
+better_email_address<-str_replace("chunkylover53[at]aol[dot]com", at_pattern, '@')
+better_email_address<-str_replace(better_email_address, dot_pattern, '.')
+better_email_address
+```
+
+In part (b) we forget that the character class needs a quantifier to allow for digit 
+strings of length >1.  We should add a plus, unless we're using a function that 
+extracts all.  Additionally, we should add an additional layer of square brackets to 
+allow for proper interpretation by the R regex interpreter (although in my
+Mac OS environment and R version, the expected confusion doesn't occur).
+
+Consider the difference:
+```{r eval=TRUE}
+str_extract(better_email_address, "[:digit:]")
+str_extract(better_email_address, "[[:digit:]]+")
+```
+
+In part (c) we forget that capitalization matters.  We should use a lower case \\\\d
+instead of an upper case, which captures the converse!
+Consider the difference:
+```{r eval=TRUE}
+str_extract("chunkylover53[at]aol[dot]com", "\\D+")
+str_extract("chunkylover53[at]aol[dot]com", "\\d+")
+```
