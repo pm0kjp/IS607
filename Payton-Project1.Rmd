@@ -1,0 +1,266 @@
+---
+title: "Project 1 — IS 607"
+author: "Joy Payton"
+date: "September 24, 2015"
+output: html_document
+---
+
+# Why This Project
+
+This project is completed as partial fulfillment of the coursework for IS 607, which forms part of the Data Analytics Masters Degree at the City University of New York.  Due to scheduling constraints this was carried out as a solo project.
+
+# History of the Struggle.
+This is an example of the kind of work that is sourced from many other people with more experience than me!  
+
+I began this quest with a total red herring -- having just done a ton of work in regex, I assumed quite incorrectly that the heavy lifting of scraping the data would need to be done by regex.  In the interest of humility, and because my regex was pretty killer, I leave as an appendix the tables of regex analysis I originally did at the beginning of this project.
+
+Then Arun Kumar saved me from toiling fruitlessly when he cryptically said something to the effect that I was missing the point and that there was a faster way to do this.  Upon which I exclaimed, "Aha!  It has to do with delimiters, doesn't it?".  The vertical pipes were staring me in the face.  We exchanged a few messages back and forth (he was helpful without being *too* helpful) and I began a new approach.
+
+The first problem I felt I'd need to handle would be getting a vector of lines into some sort of data frame that was three columns wide -- one column for each row relating to a single player.  This is where StackExchange rescued me (http://stackoverflow.com/questions/17752830/r-reshape-a-vector-into-multiple-columns, note the helpful advice to RTFM, which was a new and instantly understandable acronym.)  Once I could get my data reshaped, the rest seemed pretty darn easy (thanks to Arun).
+
+I did struggle a bit to figure out just how to use apply(), so I document here my actual to-and-fro of figuring out how to do it.  This document is therefore not the shortest distance between two points but rather the documentation of a thought process.
+
+
+# The Good Stuff -- Setting up the Data
+
+First, I get the data from my GitHub, leaving out the first three rows of header data.
+Note, the warning about the incomplete final line can be ignored.
+``` {r eval=TRUE}
+download.file("https://raw.githubusercontent.com/pm0kjp/IS607/master/tournamentinfo.txt", "tournamentinfo.txt", method="curl")
+chess_text<-readLines("tournamentinfo.txt")
+chess_text<-chess_text[5:196]
+head(chess_text)
+```
+
+Then I'll reshape it into a data frame that's three columns wide.
+``` {r eval=TRUE}
+chess_df<-data.frame(matrix(chess_text, ncol =3 , byrow = TRUE))
+head(chess_df)
+```
+
+I don't really need the last column, which consists of all hyphens.
+``` {r eval=TRUE}
+chess_df<-chess_df[,1:2]
+```
+
+Now I want to split my two remaining column values, using the vertical pipe as my delimiter:
+``` {r eval=TRUE}
+row1<-data.frame(do.call('rbind', strsplit(as.character(chess_df[,1]), '|', fixed=TRUE)))
+row2<-data.frame(do.call('rbind', strsplit(as.character(chess_df[,2]), '|', fixed=TRUE)))
+# I recombine them into one:
+chess_df<-cbind(row1, row2)
+head(chess_df)
+```
+
+I'm far from done, because I have some columns that contain several fields that need extraction, while other columns should be deleted.  Let's drop and rename to make things a bit simpler:
+
+``` {r eval=TRUE}
+chess_df<-chess_df[,1:12]
+colnames(chess_df)<-c('id','name','points', 'round_1', 'round_2',
+                      'round_3','round_4','round_5', 'round_6', 'round_7',
+                      'state', 'rating_change')
+```
+
+So far, id, name, and points are already separated.  However, the seven games have both the game status (a letter) and the opponent (a number).  We want to keep the number only.  Heck, we'll go ahead and make sure it's an integer, while we're at it.
+
+``` {r eval=TRUE}
+library(stringr)
+chess_df$round_1<-as.integer(str_extract(chess_df$round_1, "[[:digit:]]+"))
+chess_df$round_2<-as.integer(str_extract(chess_df$round_2, "[[:digit:]]+"))
+chess_df$round_3<-as.integer(str_extract(chess_df$round_3, "[[:digit:]]+"))
+chess_df$round_4<-as.integer(str_extract(chess_df$round_4, "[[:digit:]]+"))
+chess_df$round_5<-as.integer(str_extract(chess_df$round_5, "[[:digit:]]+"))
+chess_df$round_6<-as.integer(str_extract(chess_df$round_6, "[[:digit:]]+"))
+chess_df$round_7<-as.integer(str_extract(chess_df$round_7, "[[:digit:]]+"))
+```
+
+We're getting much closer!
+``` {r eval=TRUE}
+head(chess_df)
+```
+
+But... we still have to extract pre and post ratings from the rating_change column.
+Luckily I still have my **awesome** regex from back when I thought I had to regex the world.
+
+``` {r eval=TRUE}
+pre_post<-data.frame(str_match(chess_df$rating_change,".+\\:\\s+([[:digit:]]+).+[\\-]>\\s*([[:digit:]]+)"))
+head(pre_post)
+```
+
+I'll remove the old column with the ratings information and replace it with a columns that represent the pre  ratings.
+
+``` {r eval=TRUE}
+library(dplyr)
+chess_df<-select(chess_df, -rating_change)
+chess_df<-cbind(chess_df,pre_post[2])
+# add a better name
+colnames(chess_df)[12]<-"pre_rating"
+# oh, and make it an integer, too, by way of character (factor->character-> integer)
+chess_df$pre_rating<-as.integer(as.character(chess_df$pre_rating))
+```
+
+How are we doing so far?  Pretty good!  Let's also look at the attributes of the data frame to see if we want to do additional cleanup before proceeding:
+``` {r eval=TRUE}
+head(chess_df)
+str(chess_df)
+```
+
+Before we go any farther, let's do a tiny bit more cleanup.  We want the id column to be integer, and we should trim the spaces in the name and state field, just to preserve disk space and really get tight, tidy data.  We'll also ensure that the points column is numeric.
+``` {r eval=TRUE}
+chess_df$id<-as.integer(chess_df$id)
+chess_df$name<-str_trim(as.character(chess_df$name, side = "both"))
+chess_df$state<-str_trim(as.character(chess_df$state), side = "both")
+# for the points column, it's a factor, so we have to first convert it to character, then numeric.
+chess_df$points<-as.numeric(as.character(chess_df$points))
+```
+
+# The Better Stuff -- Calculation!
+
+The nice thing about having the id's of opponents in the various columns of any player is that we can use those values as row indexes.  So, if I want to find the pre-rating score for player 1's first opponent, I figure out how to locate the id of player 1's first opponent, which is:
+```{r eval=TRUE}
+chess_df[1,"round_1"]
+```
+
+Then, I can use that as the row index, and pre_rating as the column identifier, for the value of the first opponent's pre rating:
+
+```{r eval=TRUE}
+chess_df[chess_df[1,"round_1"],"pre_rating"]
+```
+
+I think I know how to calculate the sum of opponent pre-ratings for a given tournament player.  Let me test my hypothesis.  This is what I came up with for player number 1:
+``` {r eval=TRUE}
+sum(chess_df[chess_df[1,"round_1"],"pre_rating"],chess_df[chess_df[1,"round_2"],"pre_rating"], chess_df[chess_df[1,"round_3"],"pre_rating"],chess_df[chess_df[1,"round_4"],"pre_rating"], chess_df[chess_df[1,"round_5"],"pre_rating"],chess_df[chess_df[1,"round_6"],"pre_rating"], chess_df[chess_df[1,"round_7"],"pre_rating"], na.rm=TRUE)
+```
+
+Is this true?  Well, the opponents of player 1 and their scores are below:
+
+Opponent | Opponent's Pre-Rating
+---------|----------------------
+39 | 1436
+21 | 1563
+18 | 1600
+14 | 1610
+7  | 1649
+12 | 1663
+4  | 1716
+__TOTAL__ | __11237__
+
+OK, great, the total seems legit.  What about the number of opponents?  I think that I can find the total number of opponents with this R code:
+``` {r eval=TRUE}
+sum(!is.na(c(chess_df[chess_df[1,"round_1"],"pre_rating"],chess_df[chess_df[1,"round_2"],"pre_rating"], chess_df[chess_df[1,"round_3"],"pre_rating"],chess_df[chess_df[1,"round_4"],"pre_rating"], chess_df[chess_df[1,"round_5"],"pre_rating"],chess_df[chess_df[1,"round_6"],"pre_rating"], chess_df[chess_df[1,"round_7"],"pre_rating"])))
+```
+
+As expected, this gives me 7.  So with the total rating and the number of opponents, I can easily figure out the average.  I should also test my method using a row I know has some "empty opponents" or games that were not played.
+
+I'll do exactly what I did for player 1, but this time for player 53, who had several unplayed rounds.
+
+``` {r eval=TRUE}
+sum(chess_df[chess_df[53,"round_1"],"pre_rating"],chess_df[chess_df[53,"round_2"],"pre_rating"], chess_df[chess_df[53,"round_3"],"pre_rating"],chess_df[chess_df[53,"round_4"],"pre_rating"], chess_df[chess_df[53,"round_5"],"pre_rating"],chess_df[chess_df[53,"round_6"],"pre_rating"], chess_df[chess_df[53,"round_7"],"pre_rating"], na.rm=TRUE)
+```
+
+Is this true?  Well, the opponents of player 53 and their scores are below:
+
+Opponent | Opponent's Pre-Rating
+---------|----------------------
+25 | 1745
+44 | 1199
+57 | 1092
+__TOTAL__ | __4036__
+
+OK, great, the total seems legit.  What about the number of opponents?  I think that I can find the total number of opponents with this R code:
+``` {r eval=TRUE}
+sum(!is.na(c(chess_df[chess_df[53,"round_1"],"pre_rating"],chess_df[chess_df[53,"round_2"],"pre_rating"], chess_df[chess_df[53,"round_3"],"pre_rating"],chess_df[chess_df[53,"round_4"],"pre_rating"], chess_df[chess_df[53,"round_5"],"pre_rating"],chess_df[chess_df[53,"round_6"],"pre_rating"], chess_df[chess_df[53,"round_7"],"pre_rating"])))
+```
+
+As expected, I come up with the value 3.
+
+Well, I have a model, but I really don't want to rewrite this 64 times OR create a loop that does it.  I'll try to use apply.  This means that I first have to make an array (or data frame that can be coerced to an array), this time with only the rounds in it.  I bet this means I can shorten all that repetitive "round_1", "round_2" retyping!
+
+``` {r eval=TRUE}
+opponent_df<-select(chess_df, starts_with("round_"))
+head(opponent_df)
+```
+
+What if I just used apply to do the indexing I did above manually in order to find the pre ratings of opponents?  Something like this?
+
+``` {r eval=TRUE}
+opponent_pre_ratings<-apply(opponent_df, c(1,2), function(x) chess_df[x,"pre_rating"])
+```
+
+Let's check the first row and the fifty-third, since they represent the first and fifty-third tournament participant, and we've already looked all that stuff up:
+``` {r eval=TRUE}
+opponent_pre_ratings[1,]
+opponent_pre_ratings[53,]
+```
+
+This is great!  Now all I have to do is find the mean and add that to my original data frame.  None of the typing and repetition I thought it would be.
+``` {r eval=TRUE}
+chess_df$opponent_avg_pre_rating<-round(rowMeans(opponent_pre_ratings, na.rm=TRUE))
+```
+
+Now I'll use dplyr arrange to limit the data to just what I was asked to provide:
+``` {r eval=TRUE}
+final_chess_df<-select(chess_df, name, state, points, pre_rating, opponent_avg_pre_rating)
+head(final_chess_df)
+```
+
+All done.  Now to write the csv:
+``` {r eval=TRUE}
+write.csv(final_chess_df,"final_chess_data.csv")
+```
+
+Clean up
+``` {r eval=TRUE}
+rm(list=ls())
+```
+
+
+# Appendix: All Regex, All the Time
+We start out with a sample file and consider what the potential regex code would be for each element:
+
+__Header Lines (Lines 1 - 4 of the text file:)  Ignore (we'll remove these)__
+
+__Three Lines Apiece for Each Player:__
+_Note: We don't include the EOL or \\n character, since flattening the text seems helpful._
+
+__Line 1:  Player identification, play results, and opponents__
+
+Description | Regex | Disposition
+------------|-------|------------
+some spaces | \\\\s+ | toss this
+some numbers | [[:digit:]]+ | keep this as player id
+a space, maybe two? | \\\\s+ | toss this
+a vertical pipe (divider) | \\\\\| | toss this
+a space, maybe two? | \\\\s+ | toss this
+some alphabetics and spaces | [\\\\s,[:alpha:]]+ |keep as name (can trim spaces off the end later)
+a vertical pipe (divider) | \\\\\| | toss this
+some numbers with a decimal point | [\\\\.,[:digit:]]+ | keep this as points
+a space, maybe two? | \\\\s+ | toss this
+a vertical pipe (divider) | \\\\\| | toss this
+_Italicized lines below can repeat up to seven times, with possible absences among the repetitions_ | | 
+_A capital letter_ | [A-Z] | toss this, we only care about opponent
+_a space, maybe two?_ | \\\\s+ | toss this
+_some numbers, maybe!_ | [[:digit:]]* | keep as opponent ID
+_a vertical pipe (divider)_ | \\\\\| | toss this
+
+__Line 2:  Player state, before and after rating__
+
+Description | Regex | Disposition
+------------|-------|------------
+some spaces | \\\\s+ | toss this
+some letters (probably two) | [[:alpha:]]+ | keep this as player state
+a space, maybe two? | \\\\s+ | toss this
+a bunch of characters not including a colon | [^:] | toss this out
+a colon and space | :\\\\s | this is a divider, toss it
+some numbers | [[:digit:]]+ | keep this as previous rating
+a bunch of characters not including a hyphen | [^\\-]+ | toss it
+a forward arrow (hyphen gt) | \\\\-\\\\< | toss it
+some numbers | [[:digit:]]+ | keep as post-tourney rating
+a bunch of other characters with no hyphen | [^\\-]+| toss -- we're done!
+
+__Line 3: All hyphens__
+
+Description | Regex | Disposition
+------------|-------|------------
+A bunch of hyphens | \\\\-+ |  Toss it.  Separator only.
+
