@@ -1,0 +1,147 @@
+---
+title: "Homework, Week 6"
+author: "Joy Payton"
+date: "October 3, 2015"
+output: 
+  html_document: 
+    toc: true
+    theme: cerulean
+---
+
+##Assignment:
+- Read the information from an untidy .CSV file into R
+- Use tidyr and dplyr as needed to tidy and transform the data.
+- Perform analysis to compare the arrival delays for the two airlines.
+
+##Planning:
+
+###Starting format:
+
+We begin with a table that looks like this (some cities left out for brevity, dots represent blank leading cells):
+
+.         |           | Los Angeles | Phoenix | San Diego 
+--------- | --------- | ----------- | ------- | -------------
+ALASKA    | on time   | 497         | 221     | 212 
+.         | delayed   | 62          | 12      | 20
+.         |           |             |         | 
+AM WEST   | on time   | 694         | 4,840   | 383
+.         | delayed   | 117         | 415     | 65
+
+###Final format: 
+We begin with the end in mind.  We will want a table that looks like this, instead:
+
+Airline | City | On Time | Delayed
+------- | ---- | ------- | -------
+Alaska  | Los Angeles | 497 | 62
+Alaska  | Phoenix | 221 | 12
+Alaska  | San Diego | 212 | 20
+Am West | Los Angeles | 694 | 117
+Am West | Phoenix | 4840 | 415
+Am West | San Diego | 383 | 65
+
+This kind of table can be analyzed easily for on-time performance by city or by airline.
+
+###Assumptions:
+We assume that this is an example table and that the actual table could be wider (more cities) or longer (more airlines).  The code in this R Markdown is intended to work for any length of data that follows the same format as the example given and read in.
+ 
+##Load up required packages:
+```{r, eval=TRUE}
+library(dplyr)
+library(tidyr)
+```
+
+##Download CSV and read it into an R object
+
+```{r, eval=TRUE}
+download.file("https://raw.githubusercontent.com/pm0kjp/IS607/df95386b98f2605b63947b41d670d20c1a9b9e94/flight_ontime_data.csv", "flight_ontime_data.csv", method="curl")
+flight_data<-read.csv("flight_ontime_data.csv")
+head(flight_data)
+```
+
+## Basic, Initial Cleanup
+
+Keep in mind that this is an example.  We want to avoid referencing specific rows / columns or doing manipulation that would be difficult or time consuming if the table were instead to include 40 airlines and 75 cities.
+
+Remove any blank lines (instead of just removing the third row, I tried to do this in such a way that it would work for any length of table that continues the data in the same format):
+
+```{r, eval=TRUE}
+flight_data<-filter(flight_data, X.1!="")
+head(flight_data)
+```
+
+Now I have an "every other row" named / nameless problem in my first column.  This prevents me from using spread() effectively. I'll solve this by first coming up with a subset of rows with names and a subset of rows without names.  I do this in such a way that regardless of the number of rows, this will work:
+```{r, eval=TRUE}
+name_rows<-seq(from = 1, to = nrow(flight_data), by=2)
+nameless_rows<-seq(from = 2, to = nrow(flight_data), by=2)
+```
+
+Now I simply copy the corresponding names from the named to the unnamed rows.
+```{r, eval=TRUE}
+flight_data[nameless_rows,1]<-flight_data[name_rows,1]
+head(flight_data)
+```
+
+## Using gather to make city into a variable
+
+As shown in my desired final format, I want city to be a variable, instead of being a value spread in the header.  I'll use gather to do this.  As always, I don't hard code in the length but refer to the actual dimension of the data frame so that this code is portable to larger datasets with the same format.
+
+```{r, eval=TRUE}
+flight_data<-gather(flight_data, "city", "n", 3:ncol(flight_data))
+head(flight_data)
+```
+
+## Using spread to make on time / delayed into two separate columns
+
+Again, I referenced my desired output table, and look at the second column (still named X.1).  I want to make these into two columns that will each contain the corresponding count.
+
+```{r, eval=TRUE}
+flight_data<-spread(flight_data, X.1, n)
+head(flight_data)
+```
+
+## Final cleanup
+
+We've got a couple of small updates to do:  We need to name the first column, remove dots from the city names, and replace the space in "on time" with an underscore:
+```{r, eval=TRUE}
+colnames(flight_data)[1]<-"airline"
+flight_data$city<-gsub("\\."," ",flight_data$city)
+colnames(flight_data)[4]<-"on_time"
+flight_data
+```
+
+## Analysis
+
+We are asked to do on-time performance analysis. First, let's summarize overall on time performance (otp) across all cities and airlines:
+```{r, eval=TRUE}
+summarise(flight_data, on_time_total=sum(on_time), delayed_total=sum(delayed), otp=on_time_total/(on_time_total+delayed_total)*100)
+```
+
+We can also use group_by and summarise together to summarize overall performance by airline:
+```{r, eval=TRUE}
+flight_data %>% group_by(airline) %>% summarise(on_time_total=sum(on_time), delayed_total=sum(delayed), otp=on_time_total/(on_time_total+delayed_total)*100)
+```
+
+Or, by city:
+```{r, eval=TRUE}
+flight_data %>% group_by(city) %>% summarise(on_time_total=sum(on_time), delayed_total=sum(delayed), otp=on_time_total/(on_time_total+delayed_total)*100)
+```
+
+Or, by both city and airline:
+```{r, eval=TRUE}
+flight_data %>% group_by(city, airline) %>% summarise(on_time_total=sum(on_time), delayed_total=sum(delayed), otp=on_time_total/(on_time_total+delayed_total)*100)
+```
+
+## Visualization
+
+What about some data visualization?  We could start really simple, with qplot.  We can plot the on time performance (on time divided by all flights) on a per-city basis, with each airline having a color.
+
+```{r, eval=TRUE}
+library(ggplot2)
+qplot(city,on_time/(on_time+delayed), data=flight_data, color=airline)
+```
+
+Well, this helps us see visually that Alaska has a better on-time performance in each market, compared to Am. West, but the plot itself is unattractive.  The y-axis label is ugly, the dots are small, and the plot isn't titled.  Let's do a grouped bar plot, and update the y axis and legend:
+
+```{r, eval=TRUE}
+ggplot(flight_data, aes(x=factor(city), fill=factor(airline), y=on_time/(on_time+delayed)*100)) + geom_bar(position="dodge", stat="identity") + ylab("Percent On-Time Performance") + scale_y_continuous(breaks = seq(0, 100, by = 5)) + xlab ("") + scale_fill_discrete(name="Airline")
+```
