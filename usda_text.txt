@@ -1,0 +1,61 @@
+Prices Received for Field Crops and Fruits - United States: August 2015 with Comparisons
+------------------------------------------------------------------------------------------------------
+                                          :     2011     :              :              :              
+                 Commodity                :  Base Price  : August 2014  :  July 2015   : August 2015  
+------------------------------------------------------------------------------------------------------
+                                          :                                                           
+Field crops                               :                                                           
+ Austrian winter peas .........dollars/cwt:     19.50           23.10            (D)            (D)   
+ Barley, all ...............dollars/bushel:      4.79            5.60           5.19           5.59   
+  Feed .....................dollars/bushel:      4.59            3.31           2.98           3.00   
+  Malting ..................dollars/bushel:      4.83            6.11           5.72           5.90   
+ Beans, dry edible ............dollars/cwt:     34.60           35.90          27.50          29.00   
+ Canola .......................dollars/cwt:     23.10           17.80          18.10          15.60   
+ Chickpeas, all ...............dollars/cwt:     35.70           32.70          29.90          28.60   
+  Large .......................dollars/cwt:     39.20           33.30          30.60          29.30   
+  Small .......................dollars/cwt:     23.40             (D)          22.00          20.70   
+ Corn ......................dollars/bushel:      6.02            3.63           3.80           3.68   
+                                          :                                                           
+ Cotton, Upland .............dollars/pound:     0.880           0.705          0.661          0.580   
+ Cottonseed ...................dollars/ton:    131.00          182.00           (NA)         192.00   
+ Flaxseed ..................dollars/bushel:     14.20           13.30          11.50          10.00   
+ Hay, all, baled ..............dollars/ton:    159.00          181.00         156.00         145.00   
+  Alfalfa .....................dollars/ton:    176.00          207.00         169.00         159.00   
+  Other .......................dollars/ton:    119.00          132.00         129.00         115.00   
+ Lentils ......................dollars/cwt:     27.50           20.00          30.10          25.80   
+ Oats ......................dollars/bushel:      3.42            3.24           2.33           2.08   
+ Peanuts, in-shell ..........dollars/pound:     0.252           0.221          0.230          0.219   
+ Peas, dry edible .............dollars/cwt:     13.60           11.00          11.30          10.60   
+                                          :                                                           
+ Potatoes .....................dollars/cwt:      9.78            8.88           9.04           8.54   
+ Rice, all ....................dollars/cwt:     13.70           15.60          11.20          11.50   
+  Long ........................dollars/cwt:     12.30           14.30           9.96          10.40   
+  Medium and short ............dollars/cwt:     18.40           20.30          16.60          17.20   
+ Sorghum grain ................dollars/cwt:     10.70            7.13           7.68           7.90   
+ Soybeans ..................dollars/bushel:     12.50           12.40           9.95           9.71   
+ Sunflowers, all ..............dollars/cwt:     29.00           22.40          26.40          24.10   
+                                          :                                                           
+ Wheat, all ................dollars/bushel:      7.44            5.97           5.23           4.85   
+  Winter ...................dollars/bushel:      6.93            5.90           5.15           4.82   
+  Durum ....................dollars/bushel:      9.22            8.03           8.74           7.30   
+  Other spring .............dollars/bushel:      8.33            5.93           5.15           4.72   
+  Hard red winter  .........dollars/bushel:      7.07            6.03           5.21           4.57   
+  Soft red winter  .........dollars/bushel:      6.77            5.13           4.69           4.54   
+  Hard red spring  .........dollars/bushel:      8.38            5.89           5.13           4.69   
+  White  ...................dollars/bushel:      6.58            6.40           6.34           6.00   
+                                          :                                                           
+Fruits                                    :                                                           
+ Citrus, equivalent on-tree               :                                                           
+  Grapefruit ..................dollars/box:      7.47            8.05           9.33           5.71   
+  Lemons ......................dollars/box:     12.30           33.68          37.34          34.95   
+  Oranges .....................dollars/box:      8.16           14.78          10.79          12.24   
+  Tangelos ....................dollars/box:      3.50             (S)            (S)            (S)   
+  Tangerines and mandarins ....dollars/box:     15.30             (S)            (S)            (S)   
+                                          :                                                           
+ Noncitrus, fresh                         :                                                           
+  Apples 1/ .................dollars/pound:     0.325           0.388          0.184          0.307   
+  Grapes 1/ ...................dollars/ton:    628.00        1,360.00       1,340.00       1,470.00   
+  Peaches 1/ ..................dollars/ton:    507.00        1,070.00         933.00       1,010.00   
+  Pears 1/ ....................dollars/ton:    559.00          531.00         706.00         700.00   
+  Strawberries ................dollars/cwt:    104.00           92.70          60.20          86.70   
+------------------------------------------------------------------------------------------------------

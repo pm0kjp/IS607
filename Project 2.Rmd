@@ -1,0 +1,295 @@
+---
+title: "Project 2 for IS 607"
+author: "Joy Payton"
+date: "October 6, 2015"
+output: 
+  html_document: 
+    toc: true
+---
+
+##Amazon Reviews (suggested by Joy Payton)
+
+###Introduction to the Data
+
+The URL for all reviews of the Hutzler Banana Slicer can be found here: <http://www.amazon.com/Hutzler-571-Banana-Slicer/product-reviews/B0047E0EII/ref=cm_cr_dp_see_all_summary?ie=UTF8&showViewpoints=1&sortBy=byRankDescending>.
+
+By using the element inspector of Chrome, I can peek into the html structure and discover that each review is structured in this way:
+```
+div with class "reviews" holds all reviews
+  div with class "review" holds a single review
+    div with class "helpful-votes-count" has text describing how helpful the review has been to other users
+    span with class "a-icon-alt" has text describing the number of stars
+    \<a\> with class "review-title" has title of the review
+    \<a\> with class "author" has the username of the reviewer
+    span with class "review-date" has text containing the date of the review
+    span with class "review-text" contains the review text
+```    
+###Tool Preparation
+
+First, I need to install and load rvest, dplyr, and stringi.  I'll also load a few packages even though I'm not using them in the Amazon dataset.  They'll come in handy later!  Note that you may have to install packages that are not present in your own R environment.
+```{r}
+library(rvest)
+library(stringi)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+```
+###Getting the Amazon Reviews
+
+Now I'll load the page and choose just the "reviews" section.  Note that classes are prefixed with a period, so I use ".reviews".
+
+```{r}
+amazon <- read_html("http://www.amazon.com/Hutzler-571-Banana-Slicer/product-reviews/B0047E0EII/ref=cm_cr_dp_see_all_summary?ie=UTF8&showViewpoints=1&sortBy=byRankDescending")
+review_section<-amazon %>% html_node(".reviews")
+```
+###HTML Parsing
+Within the "reviews" section, I have any number of nodes that I need to parse.  I first create a list called "reviews", then create vectors for each element I'm going to pull out of each review.
+
+```{r}
+reviews<-review_section %>% html_nodes(".review")
+helpful_votes<-reviews %>% html_nodes(".helpful-votes-count") %>% html_text()
+helpful_votes
+stars<-reviews %>% html_nodes(".a-icon-alt") %>% html_text()
+stars
+title<-reviews %>% html_nodes(".review-title") %>% html_text()
+title
+author<-reviews %>% html_nodes(".author") %>% html_text()
+author
+date<-reviews %>% html_nodes(".review-date") %>% html_text()
+date
+text<-reviews %>% html_nodes(".review-text") %>% html_text()
+head(text)
+```
+
+###Cleaning and Integration
+Now I'll column bind those vectors:
+```{r}
+amazon_reviews<-data.frame(cbind(date, title, author, text, stars, helpful_votes))
+head(amazon_reviews)
+```
+
+I've still got to do some cleanup:  date, stars, and helpful_votes need to have extraneous text removed.
+
+```{r}
+amazon_reviews$date<-as.Date(amazon_reviews$date, "on %B %d, %Y")
+amazon_reviews$stars<-as.numeric(gsub(" out.+", "", amazon_reviews$stars))
+amazon_reviews$helpful_votes<-gsub(" of.+", "", amazon_reviews$helpful_votes)
+amazon_reviews$helpful_votes<-as.numeric(gsub(",", "", amazon_reviews$helpful_votes))
+head(amazon_reviews)
+```
+###Analysis
+Now we're ready to do some analysis.  Let's calculate the word count of the review text.
+
+```{r}
+library(dplyr)
+library(stringi)
+amazon_reviews<-mutate(amazon_reviews, word_count=stri_count(text, regex="\\S+"))
+head(amazon_reviews)
+```
+
+Are there any correlations?  Let's create a correlation matrix:
+```{r}
+cor(select(amazon_reviews, stars, helpful_votes, word_count))
+```
+
+There seems to be a weak but noticable positive correlation between the number of stars and the helpful votes.  Amazon users seem to find positive reviews (with higher number of stars) more helpful than less positive reviews.
+
+###Future Improvements
+
+It would be interesting to do this analysis with 50, or 100, or 1000 reviews, but only 10 are shown in a single page.  An improved algorithm would retrieve additional pages of reviews and unite them in a single data frame for analysis.
+
+##Papal Popularity (suggested by Andrew Goldberg)
+
+###Introduction to the Data
+
+In this section, we'll be working with popularity data found here: <http://www.gallup.com/poll/168098/americans-pope-favorable-light.aspx?g_source=position2&g_medium=related&g_campaign=tiles>
+This is a dataset with lots of untidy features.  The first and second rows form a single header. The first row contains two different data types: name and date range.  The date variable does not have its own column... this data set needs some serious help!
+
+###Getting Papal Popularity
+```{r, eval=TRUE}
+download.file("https://raw.githubusercontent.com/pm0kjp/IS607/master/papal_popularity.csv", "papal_popularity.csv", method="curl")
+papal_popularity<-read.csv("papal_popularity.csv")
+head(papal_popularity)
+```
+
+###Cleaning
+First off, we notice that the first column has two kinds of data, and that our column names leave much to be desired.  We'll duplicate the first column and create better column names by using transmute().
+
+```{r}
+papal_popularity<-transmute(papal_popularity, name=X, date=X, favorable=Favorable, unfavorable=Unfavorable, no_knowledge_or_opinion = Never.heard.of...no.opinion)
+```
+
+We should remove any rows in which the first column is empty.  That will take care of that weird top row with just the percentage symbol as well as separator rows.  We'll also clean the first and second column so that only names appear in the first column and only dates appear in the second:
+
+```{r}
+papal_popularity<-filter(papal_popularity, name!="")
+papal_popularity<-mutate(papal_popularity, name=replace(name, !grepl("Pope", name), NA))
+papal_popularity<-mutate(papal_popularity, date=replace(date, grepl("Pope", date), NA))
+head(papal_popularity)
+```
+
+At this point, we have to fill in name rows.  The blanks below each Pope's name represent rows pertaining to him, so we should extend the most recent non-NA down through subsequent NA fields in that first column.  This was tricky and I had to resort to the Google Machine, where I found a great solution at <http://stackoverflow.com/questions/7735647/replacing-nas-with-latest-non-na-value>.
+```{r}
+repeat.before = function(x) {   # repeats the last non NA value. Keeps leading NA
+    ind = which(!is.na(x))      # get positions of nonmissing values
+    if(is.na(x[1]))             # if it begins with a missing, add the 
+          ind = c(1,ind)        # first position to the indices
+    rep(x[ind], times = diff(   # repeat the values at these indices
+       c(ind, length(x) + 1) )) # diffing the indices + length yields how often 
+}
+papal_popularity$name<-repeat.before(papal_popularity$name)
+head(papal_popularity)
+```
+
+We'll now also get rid of that original per-pope header, which we don't need any more.  We can do this by filtering on dates.
+
+```{r}
+papal_popularity<-filter(papal_popularity, !is.na(date))
+head(papal_popularity)
+```
+
+Now let's clean up the dates by just grabbing the start date, and converting that to a date type:
+
+```{r}
+papal_popularity$date<-gsub("\\-.+\\,\\s*", " ", papal_popularity$date)
+papal_popularity$date<-as.Date(papal_popularity$date, "%b %d %Y")
+```
+
+If we use str() we can see that there are problems with some of our variable types -- factor variables with unused factor levels and factor variables that should be numeric.  We'll fix that.
+
+```{r}
+droplevels(papal_popularity$name)
+papal_popularity$favorable<-as.numeric(as.character(papal_popularity$favorable))
+papal_popularity$unfavorable<-as.numeric(as.character(papal_popularity$unfavorable))
+papal_popularity$no_knowledge_or_opinion<-as.numeric(as.character(papal_popularity$no_knowledge_or_opinion))
+```
+
+###Analysis
+
+Now that we have numerical vectors, we can use summarise() to find the mean favorable on a per-pope basis or plot their favorability over time:
+```{r}
+group_by(papal_popularity,name) %>% summarise(mean(favorable))
+plot(favorable ~ date, filter(papal_popularity, grepl("John Paul", name)))
+plot(favorable ~ date, filter(papal_popularity, grepl("Benedict", name)))
+plot(favorable ~ date, filter(papal_popularity, grepl("Francis", name)))
+```
+
+###Future Improvements
+
+One concern I have with data like this is that I don't account for the possibility that a date range spans the turn of a year, which would cause some badly parsed data.  This is an obvious area for improvement!
+
+##USDA Crop Prices (suggested by Mohan Kandaraj)
+
+###Introduction to the data
+
+This (<http://usda.mannlib.cornell.edu/usda/current/AgriPric/AgriPric-09-29-2015.txt>) is a complex text file that has visually delimited tables like this:
+```
+Prices Received for Field Crops and Fruits - United States: August 2015 with Comparisons
+------------------------------------------------------------------------------------------------------
+                                          :     2011     :              :              :              
+                 Commodity                :  Base Price  : August 2014  :  July 2015   : August 2015  
+------------------------------------------------------------------------------------------------------
+                                          :                                                           
+Field crops                               :                                                           
+ Austrian winter peas .........dollars/cwt:     19.50           23.10            (D)            (D)   
+ Barley, all ...............dollars/bushel:      4.79            5.60           5.19           5.59   
+  Feed .....................dollars/bushel:      4.59            3.31           2.98           3.00   
+  Malting ..................dollars/bushel:      4.83            6.11           5.72           5.90   
+ Beans, dry edible ............dollars/cwt:     34.60           35.90          27.50          29.00   
+ Canola .......................dollars/cwt:     23.10           17.80          18.10          15.60   
+ Chickpeas, all ...............dollars/cwt:     35.70           32.70          29.90          28.60   
+```
+In this example, I'm going to pull the table I've just shown (in its entirety), the Prices Received for Field Crops and Fruits - United States: August 2015 with Comparisons.
+
+###Getting the data
+
+First I have to read the data in and toss the rows I'm not concerned with!
+
+```{r}
+download.file("http://usda.mannlib.cornell.edu/usda/current/AgriPric/AgriPric-09-29-2015.txt", "usda.txt", method="curl")
+usda_text<-readLines("usda.txt")
+head(usda_text, 20)
+```
+
+Where the heck is the table I'm concerned about?
+```{r}
+which(grepl("Prices Received for Field Crops and Fruits - United States", usda_text))
+```
+
+The first occurrence is in a Table of Contents (note the dotted line that leads to "page 10").  The second occurrence is what we want.  We'll lop off the top of the text that doesn't matter to us, then we'll cut the bottom off after the third line of hyphens (we know that the first two rows of hyphens constitute part of the table header, and that the third row of all hyphens is the last line of the data table).
+
+```{r}
+usda_text<-usda_text[320:length(usda_text)]
+head(usda_text, 10)
+cutoff<-which(grepl("\\-{20,}", usda_text))[3]  # Where's the third line of 20+ hyphens?  That's our cutoff.
+usda_text<-usda_text[1:cutoff]
+head(usda_text)
+```
+###Cleaning the Data
+
+Time to get our rows into a data frame!  This is a fixed-width table, so we don't have to rely on regex or delimiters.  We know that row 3 has some colons that can help us figure out where to cut the text:
+```{r}
+str_locate_all(pattern="\\:", usda_text[3])
+col_widths<-c(43,58-43,73-58, 88-73, str_length(usda_text[3])-88)
+```
+
+We'll need to write the R object back out to file in order to use read.fwf:
+```{r}
+write(usda_text,"usda_text.txt")
+usda_text<-read.fwf("usda_text.txt", col_widths, skip=6)
+head(usda_text)
+```
+
+Now to clean things up.  First, we'll rename the columns.  Then, given that our crops are nested in categories of varying specificity, we'll toss the broadest category (Field crops and Fruits).  In the Field crops, we'll keep the next indented level (with one space), while in the Fruits section, we'll keep the third intented level (with two spaces).  This is because while field crops like soybeans have an "all" category with prices, in addition to the more specific level indented below, the same is not true of fruits. 
+
+```{r}
+colnames(usda_text)<-c('commodity', 'base_2011', 'aug_2014', 'jul_2015', 'aug_2015')
+head(usda_text)
+filter(usda_text, grepl("^[[:alpha:]]+ ",commodity)) # no spaces -- this is the broadest category of crops
+filter(usda_text, grepl("^\\s{1}[[:alpha:]]+ ",commodity)) # one space -- a bit more specific
+filter(usda_text, grepl("^\\s{2}[[:alpha:]]+ ",commodity)) # two spaces -- more specific still.
+crop_price_simplified<-rbind(filter(usda_text, grepl("^\\s{1}[[:alpha:]]+ ",commodity)), filter(usda_text, grepl("^\\s{2}[[:alpha:]]+ ",commodity))[16:25,])
+```
+
+Now I'll remove the extra text including units that happens after the commodity name, make sure my prices are considered character data, and strip spaces from across the data frame
+```{r}
+crop_price_simplified$commodity<-gsub("1*/*\\s*\\..+","",crop_price_simplified$commodity)
+crop_price_simplified$base_2011<-as.character(crop_price_simplified$base_2011)
+crop_price_simplified$aug_2014<-as.character(crop_price_simplified$aug_2014)
+crop_price_simplified$jul_2015<-as.character(crop_price_simplified$jul_2015)
+crop_price_simplified$aug_2015<-as.character(crop_price_simplified$aug_2015)
+crop_price_simplified<-data.frame(mapply(str_trim, crop_price_simplified))
+```
+
+I'll get rid of commas in my numbers and replace (alpha) with blanks.  Then I can make my prices into numerical vectors.  Note they've become factor variables thanks to the mapply/data frame, so I need to be careful!
+```{r}
+crop_price_simplified<-data.frame(gsub("\\,","",as.matrix(crop_price_simplified)))
+crop_price_simplified<-data.frame(gsub("\\([[:alpha:]]+\\)","",as.matrix(crop_price_simplified)))
+crop_price_simplified$base_2011<-as.numeric(as.character(crop_price_simplified$base_2011))
+crop_price_simplified$aug_2014<-as.numeric(as.character(crop_price_simplified$aug_2014))
+crop_price_simplified$jul_2015<-as.numeric(as.character(crop_price_simplified$jul_2015))
+crop_price_simplified$aug_2015<-as.numeric(as.character(crop_price_simplified$aug_2015))
+str(crop_price_simplified)
+head(crop_price_simplified)
+```
+
+Looks like we have to gather the date data into its own column!
+```{r}
+crop_price_simplified<-gather(crop_price_simplified, "date", "price", 2:5)
+```
+
+###Analysis
+Let's just find some simple summary stats.
+```{r}
+group_by(crop_price_simplified, commodity) %>%  summarise(mean(price, na.rm = TRUE))
+group_by(crop_price_simplified, date) %>%  summarise(mean(price, na.rm = TRUE))
+```
+
+And graph it!
+```{r, eval=TRUE}
+ggplot(crop_price_simplified, aes(x=factor(commodity), fill=factor(date), y=price)) + geom_bar(position="dodge", stat="identity") + ylab("Price in Dollars") +  xlab ("") + scale_fill_discrete(name="Time")
+```
+
+###Future Improvements
+It would be interesting indeed to work with the various layers of specificity / subcrops -- a bit complicated for my time commitment, but a cool project to work on!
