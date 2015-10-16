@@ -1,0 +1,28 @@
+{
+    "book": [
+        {
+            "title": "Freakonomics: A Rogue Economist Explores the Hidden Side of Everything",
+            "author": [
+                "Stephen J. Dubner",
+                "Steven Levitt"
+            ],
+            "firstPubDate": 2005,
+            "amazonVersions": 37,
+            "amazonStars": 4.0
+        },
+        {
+            "title": "The Tipping Point: How Little Things Can Make a Big Difference",
+            "author": "Malcolm Gladwell",
+            "firstPubDate": 2000,
+            "amazonVersions": 67,
+            "amazonStars": 4.2
+        },
+        {
+            "title": "Thinking, Fast and Slow",
+            "author": "Daniel Kahneman",
+            "firstPubDate": 2011,
+            "amazonVersions": 24,
+            "amazonStars": 4.4
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+<library>
+<book>
+<title>Freakonomics: A Rogue Economist Explores the Hidden Side of Everything</title>
+<author>Stephen J. Dubner</author>
+<author>Steven Levitt</author>
+<firstPubDate>2005</firstPubDate>
+<amazonVersions>37</amazonVersions>
+<amazonStars>4.0</amazonStars>
+</book>
+<book>
+<title>The Tipping Point: How Little Things Can Make a Big Difference</title>
+<author>Malcolm Gladwell</author>
+<firstPubDate>2000</firstPubDate>
+<amazonVersions>67</amazonVersions>
+<amazonStars>4.2</amazonStars>
+</book>
+<book>
+<title>Thinking, Fast and Slow</title>
+<author>Daniel Kahneman</author>
+<firstPubDate>2011</firstPubDate>
+<amazonVersions>24</amazonVersions>
+<amazonStars>4.4</amazonStars>
+</book>
+</library>
