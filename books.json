@@ -2,10 +2,7 @@
     "book": [
         {
             "title": "Freakonomics: A Rogue Economist Explores the Hidden Side of Everything",
-            "author": [
-                "Stephen J. Dubner",
-                "Steven Levitt"
-            ],
+            "author": ["Stephen J. Dubner", "Steven Levitt"],
             "firstPubDate": 2005,
             "amazonVersions": 37,
             "amazonStars": 4.0
